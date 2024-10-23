@@ -1,54 +1,54 @@
 #!/usr/bin/python3
+""" A program to ingest and track logs, periodically printing stats.
+"""
 
-import sys
+
+from sys import stdin, exit
 
 
-def print_msg(dict_sc, total_file_size):
+def printCodeTracking(totalFileSize, codeTracker):
+    """ Print formatted log stats.
     """
-    Method to print
-    Args:
-        dict_sc: dict of status codes
-        total_file_size: total of the file
-    Returns:
-        Nothing
-    """
+    # Print total size of data passed to date
+    print('File size: ' + str(totalFileSize))
 
-    print("File size: {}".format(total_file_size))
-    for key, val in sorted(dict_sc.items()):
-        if val != 0:
-            print("{}: {}".format(key, val))
+    codeList = sorted(codeTracker.keys())
+
+    # Print formatted count of requests by status code
+    for code in codeList:
+        if codeTracker[code] != 0:
+            print(code + ': ' + str(codeTracker[code]))
 
 
-total_file_size = 0
-code = 0
-counter = 0
-dict_sc = {"200": 0,
-           "301": 0,
-           "400": 0,
-           "401": 0,
-           "403": 0,
-           "404": 0,
-           "405": 0,
-           "500": 0}
+codeTracker = {
+    '200': 0, '301': 0, '400': 0, '401': 0,
+    '403': 0, '404': 0, '405': 0, '500': 0
+}
+totalFileSize = 0
+loopCounter = 0
 
 try:
-    for line in sys.stdin:
-        parsed_line = line.split()  # ✄ trimming
-        parsed_line = parsed_line[::-1]  # inverting
+    for line in stdin:
+        # Pull necessary fields from log line
+        lineSplit = line.split()
 
-        if len(parsed_line) > 2:
-            counter += 1
+        if len(lineSplit) >= 2:
+            statusCode, fileSize = [part for part in lineSplit[-2:]]
 
-            if counter <= 10:
-                total_file_size += int(parsed_line[0])  # file size
-                code = parsed_line[1]  # status code
+            # Update persistent size and status counters
+            totalFileSize += int(fileSize)
+            if statusCode in codeTracker:
+                codeTracker[statusCode] += 1
 
-                if (code in dict_sc.keys()):
-                    dict_sc[code] += 1
+                # Keep track of how many logs have been read in print loop
+                if loopCounter == 9:
+                    printCodeTracking(totalFileSize, codeTracker)
+                    loopCounter = 0
+                else:
+                    loopCounter += 1
 
-            if (counter == 10):
-                print_msg(dict_sc, total_file_size)
-                counter = 0
+    # Print stats at end of input stream
+    printCodeTracking(totalFileSize, codeTracker)
 
-finally:
-    print_msg(dict_sc, total_file_size)
+except KeyboardInterrupt:
+    printCodeTracking(totalFileSize, codeTracker)
